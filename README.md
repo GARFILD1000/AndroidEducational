@@ -8,4 +8,5 @@ Repo with android applications, which was coded for educational purposes
 
 ## SaveTheRabbit
 Игровое приложение в жанре "таппер", где игроку предстоит защитить кролика от постоянно надвигающейся на него угрозы. Игра подразумевает бесконечный геймплей, который может закончится только проигрышем (у кролика кончаются игровые очки жизни). Игровые очки прогресса со временем увеличиваются.
+
 ![Скриншоты](https://github.com/GARFILD1000/AndroidEducational/blob/master/Screenshots/Screenshots2.png?raw=true "Скриншоты")
