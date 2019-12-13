@@ -13,4 +13,5 @@ class ClapsDataViewModel: ViewModel(){
     val repo = ClapsRepository()
     var claps: LiveData<List<Clap>> =  repo.getAllClaps()
     val lastServiceId: MutableLiveData<UUID?> = MutableLiveData<UUID?>().apply { this.postValue(Preferences.loadServiceId()) }
+    val listening: MutableLiveData<Boolean> = MutableLiveData<Boolean>().apply { this.postValue(false) }
 }

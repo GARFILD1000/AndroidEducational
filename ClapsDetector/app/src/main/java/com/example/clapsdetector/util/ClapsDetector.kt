@@ -12,6 +12,7 @@ import be.tarsos.dsp.onsets.OnsetHandler
 import be.tarsos.dsp.onsets.PercussionOnsetDetector
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import kotlin.math.sqrt
 
 class ClapsDetector: OnsetHandler {
 
@@ -35,7 +36,8 @@ class ClapsDetector: OnsetHandler {
     var sensitivity: Double = 0.0
     var threshold: Double = 0.0
 
-    private var onDetected: ((time: Double, intensity: Double)->Unit)? = null
+    var onDetected: ((time: Double, intensity: Double) -> Unit)? = null
+    var onSpectrumCalculated: ((spectrum: Array<Float>) -> Unit)? = null
 
     var listening = false
         private set
@@ -54,6 +56,7 @@ class ClapsDetector: OnsetHandler {
                         enabledChannels = ch
                         enabledSampleRate = rate
                         minBufferSize = t
+                        break
                     }
                 }
             }
@@ -72,7 +75,7 @@ class ClapsDetector: OnsetHandler {
         onDetected = onDetectedListener
     }
 
-    fun start(){
+    fun prepare(){
         getBestAudioSettings()
 
         recorder = AudioRecord(
@@ -98,12 +101,12 @@ class ClapsDetector: OnsetHandler {
             true,
             false
         )
-
-        startListening()
     }
 
-    private fun startListening(){
+    fun startListening(){
         recorder?: return
+        if (listening) return
+
         listening = true
 
 //        listeningThread?.interrupt()
@@ -111,6 +114,8 @@ class ClapsDetector: OnsetHandler {
             Log.d(LOG_TAG,"in thread")
             val buffer = ByteArray(minBufferSize*2)
             recorder?.startRecording()
+            val complexSamples = Array<TComplex>(buffer.size / 4) { TComplex(0.0,0.0)}
+            val magnitudes = Array<Float>(complexSamples.size / 2) {0f}
             while(listening){
 //                Log.d(LOG_TAG,"thread")
                 val recordingResult = recorder?.read(buffer, 0, buffer.size)
@@ -132,9 +137,21 @@ class ClapsDetector: OnsetHandler {
                         Log.d(LOG_TAG,"SUCCESS")
                     }
                 }
+                Log.d("RecorderSize", "$recordingResult $minBufferSize")
+
                 if (recordingResult != AudioRecord.ERROR){
                     val audioEvent = AudioEvent(tarsosFormat)
-                    audioEvent.floatBuffer = byteArrayToFloatArray(buffer)
+                    val floatSamples = buffer.toFloatArray()
+                    complexSamples.forEachIndexed { idx, value ->
+                        value.real = floatSamples.getOrNull(idx)?.toDouble() ?: 0.0
+                    }
+                    val spectrum = FFT.decimationInFrequency(complexSamples)
+                    for (i in 0 until magnitudes.size) {
+                        magnitudes[i] = sqrt(spectrum[i].real * spectrum[i].real + spectrum[i].image * spectrum[i].image).toFloat()
+                    }
+                    normalize(magnitudes)
+                    onSpectrumCalculated?.invoke(magnitudes)
+                    audioEvent.floatBuffer = floatSamples
                     percussionOnsetDetector?.process(audioEvent)
                 }
                 SystemClock.sleep(listeningPeriodicPause)
@@ -145,7 +162,7 @@ class ClapsDetector: OnsetHandler {
         listeningThread?.start()
     }
 
-    fun stop(){
+    fun stopListening(){
         listening = false
         listeningThread?.interrupt()
     }
@@ -155,17 +172,24 @@ class ClapsDetector: OnsetHandler {
         onDetected?.invoke(time, intensity)
     }
 
-    fun byteArrayToFloatArray(byteArray: ByteArray):FloatArray{
-        val floatArray = FloatArray(byteArray.size/2)
+    fun ByteArray.toFloatArray():FloatArray{
+        val floatArray = FloatArray(this.size/2)
         val byteBuffer = ByteBuffer.allocate(2)
         byteBuffer.order(ByteOrder.LITTLE_ENDIAN)
         for(i in floatArray.indices){
-            byteBuffer.put(byteArray[i*2])
-            byteBuffer.put(byteArray[i*2+1])
+            byteBuffer.put(this[i*2])
+            byteBuffer.put(this[i*2+1])
             floatArray[i] = byteBuffer.getShort(0).toFloat()
             byteBuffer.clear()
         }
         return floatArray
     }
+
+    fun normalize(array: Array<Float>){
+        var max = Float.MIN_VALUE
+        array.forEach { if (it > max) max = it }
+        for(i in 0 until array.size) array[i] /= max
+    }
+
 
 }

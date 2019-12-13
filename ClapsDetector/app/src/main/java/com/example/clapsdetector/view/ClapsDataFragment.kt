@@ -35,7 +35,7 @@ class ClapsDataFragment : Fragment(), CoroutineScope {
         get() = Dispatchers.Main
 
     var serviceManager: WorkManager? = null
-    var service: OneTimeWorkRequest? = null
+    val clapsDetector = ClapsDetector()
 
     val clapsAdapter = ClapsListAdapter()
     val clapsListLayoutManager = LinearLayoutManager(context, RecyclerView.VERTICAL, false)
@@ -86,29 +86,33 @@ class ClapsDataFragment : Fragment(), CoroutineScope {
                 }
             }
         })
-        clapsDataViewModel.lastServiceId.observe(viewLifecycleOwner, object: Observer<UUID?>{
-            override fun onChanged(id: UUID?) {
+        clapsDataViewModel.lastServiceId.observe(viewLifecycleOwner, Observer{id ->
                 Preferences.saveServiceId(id)
-                context?:return
-                if (id == null){
-                    listenImageView.setImageDrawable(
-                        ContextCompat.getDrawable(context!!, R.drawable.ic_mic_off)
-                    )
-                } else {
-                    listenImageView.setImageDrawable(
-                        ContextCompat.getDrawable(context!!, R.drawable.ic_mic)
-                    )
-                }
+                clapsDataViewModel.listening.postValue(id != null)
+        })
+        clapsDataViewModel.listening.observe(viewLifecycleOwner, Observer{ listening ->
+            context?:return@Observer
+            if (listening){
+                listenImageView.setImageDrawable(
+                    ContextCompat.getDrawable(context!!, R.drawable.ic_mic)
+                )
+            } else {
+                listenImageView.setImageDrawable(
+                    ContextCompat.getDrawable(context!!, R.drawable.ic_mic_off)
+                )
             }
         })
 
+
         startClapButton.setOnClickListener {
-            startService()
+            //startService()
+            startThread()
             clapsDataViewModel.repo.deleteAllClaps()
         }
 
         stopClapButton.setOnClickListener {
-            stopService()
+            //stopService()
+            stopThread()
         }
     }
 
@@ -137,5 +141,33 @@ class ClapsDataFragment : Fragment(), CoroutineScope {
             serviceManager?.cancelWorkById(it)
         }
         clapsDataViewModel.lastServiceId.postValue(null)
+    }
+
+    fun startThread(){
+        clapsDataViewModel.listening.postValue(true)
+        val sensitivity = sensitivitySeekBar.progress.toDouble() / 1000.0
+        val threshold = thresholdSeekBar.progress.toDouble() / 1000.0
+        clapsDetector.sensitivity = sensitivity
+        clapsDetector.threshold = threshold
+        clapsDetector.prepare()
+        clapsDetector.onSpectrumCalculated = { spectrum ->
+            var frequency = 0
+            var max = 0f
+            for (i in spectrum.indices) {
+                if (spectrum[i] > max){
+                    max = spectrum[i]
+                    frequency = i
+                }
+            }
+            currentFrequency.setText(getString(R.string.frequency, frequency.toString()))
+            spectrumView?.spectrum = spectrum
+        }
+        clapsDetector.startListening()
+
+    }
+
+    fun stopThread(){
+        clapsDataViewModel.listening.postValue(false)
+        clapsDetector.stopListening()
     }
 }

@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">ClapsDetector</string>
+    <string name="frequency">%1$sHz</string>
 </resources>

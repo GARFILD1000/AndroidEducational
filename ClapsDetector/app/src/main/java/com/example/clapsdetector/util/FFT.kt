@@ -6,7 +6,7 @@ import kotlin.math.*
 object FFT {
     private const val TWO_PI = PI * 2.0
 
-    fun decimationInTime(frame: Array<TComplex>, direct: Boolean): Array<TComplex> {
+    fun decimationInTime(frame: Array<TComplex>, direct: Boolean = false): Array<TComplex> {
         if (frame.size == 1) return frame
         val frameHalfSize = frame.size / 2
         val frameFullSize = frame.size
@@ -34,7 +34,7 @@ object FFT {
         return spectrum
     }
 
-    fun decimationInFrequency(frame: Array<TComplex>, direct: Boolean): Array<TComplex> {
+    fun decimationInFrequency(frame: Array<TComplex>, direct: Boolean = false): Array<TComplex> {
         if (frame.size == 1) return frame
         val frameHalfSize = frame.size / 2
         val frameFullSize = frame.size
@@ -75,8 +75,8 @@ object FFT {
 object SpectrumAnalyser{}
 
 fun main(args: Array<String>){
-    val frequency = 7900 //Hz
-    val sampleSize = 8000 //samples per second. Also this is max frequency we can determinate with FFT
+    val frequency = 44000 //Hz
+    val sampleSize = 48000 //samples per second. Also this is max frequency we can determinate with FFT
     val step = 2
     val samples = Array<TComplex>(sampleSize){ TComplex(0.0, 0.0) }
 

@@ -3,6 +3,7 @@ package com.example.clapsdetector.view
 import android.Manifest
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.view.SurfaceView
 import androidx.navigation.NavController
 import androidx.navigation.Navigation
 import com.example.clapsdetector.App
