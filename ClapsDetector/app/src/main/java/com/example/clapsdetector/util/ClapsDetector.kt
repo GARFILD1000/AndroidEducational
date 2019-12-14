@@ -151,7 +151,7 @@ class ClapsDetector: OnsetHandler {
                         for (j in 0 until samplesPerAmplitude) {
                             amplitude += floatSamples[i * samplesPerAmplitude + j]
                         }
-                        val normalizedAmplitude = (amplitude / samplesPerAmplitude) / pow(2.0, encodingByteCount * 8.0 - 1).toFloat()
+                        val normalizedAmplitude = (amplitude / samplesPerAmplitude) / pow(2.0, encodingByteCount * 8.0 - 3).toFloat()
                         amplitudes.addLast(normalizedAmplitude)
                     }
                     onParametersCalculated?.invoke(magnitudes, amplitudes)
