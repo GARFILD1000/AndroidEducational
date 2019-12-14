@@ -43,19 +43,20 @@
         <TextView
             android:layout_height="wrap_content"
             android:layout_width="100dp"
-            android:text="Sensitivity: "/>
+            android:text="Max frequency: "/>
         <TextView
-            android:id="@+id/sensitivityTextView"
+            android:id="@+id/maxFrequencyTextView"
             android:layout_height="wrap_content"
             android:layout_width="50dp"
-            android:text="10.0"/>
+            android:text="20000.0"/>
         <SeekBar
-            android:id="@+id/sensitivitySeekBar"
+            android:id="@+id/maxFrequencySeekBar"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_margin="10dp"
-            android:max="100000"/>
+            android:progress="20000"
+            android:max="20000"/>
 
     </LinearLayout>
 
@@ -68,19 +69,47 @@
         <TextView
             android:layout_height="wrap_content"
             android:layout_width="100dp"
-            android:text="Threshold"/>
+            android:text="Min frequency:"/>
         <TextView
-            android:id="@+id/thresholdTextView"
+            android:id="@+id/minFrequencyTextView"
             android:layout_height="wrap_content"
             android:layout_width="50dp"
-            android:text="10.0"/>
+            android:text="0.0"/>
 
         <SeekBar
-            android:id="@+id/thresholdSeekBar"
+            android:id="@+id/minFrequencySeekBar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_margin="10dp"
+            android:progress="0"
             android:max="20000"/>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_height="wrap_content"
+            android:layout_width="100dp"
+            android:text="Sensitivity:"/>
+
+        <TextView
+            android:id="@+id/sensitivityTextView"
+            android:layout_height="wrap_content"
+            android:layout_width="50dp"
+            android:text="0.95"/>
+
+        <SeekBar
+            android:id="@+id/sensitivitySeekBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="10dp"
+            android:progress="950"
+            android:max="1000"/>
 
     </LinearLayout>
 
@@ -96,6 +125,12 @@
         android:layout_width="match_parent"
         android:text=""
         />
+
+    <com.example.clapsdetector.view.AmplitudeSurfaceView
+        android:id="@+id/amplitudeView"
+        android:layout_height="200dp"
+        android:layout_width="match_parent"
+        android:layout_marginBottom = "2dp"/>
 
     <com.example.clapsdetector.view.SpectrumSurfaceView
         android:id="@+id/spectrumView"

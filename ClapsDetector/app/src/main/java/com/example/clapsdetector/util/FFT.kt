@@ -84,7 +84,6 @@ fun main(args: Array<String>){
         val secondPart = i.toDouble() / sampleSize.toDouble()
         val func = sin(PI * secondPart * frequency)
         samples[i] = TComplex(func, 0.0)
-
     }
 
     val spectrum = FFT.decimationInTime(samples, false)

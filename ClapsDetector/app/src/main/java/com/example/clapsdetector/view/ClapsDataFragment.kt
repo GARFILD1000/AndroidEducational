@@ -25,9 +25,11 @@ import com.example.clapsdetector.viewmodel.ClapsDataViewModel
 import kotlinx.android.synthetic.main.fragment_claps_data.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.util.*
 import kotlin.coroutines.CoroutineContext
+import kotlin.math.roundToInt
 import kotlin.math.sin
 
 class ClapsDataFragment : Fragment(), CoroutineScope {
@@ -36,6 +38,10 @@ class ClapsDataFragment : Fragment(), CoroutineScope {
 
     var serviceManager: WorkManager? = null
     val clapsDetector = ClapsDetector()
+
+    var maxFrequency = 20000f
+    var minFrequency = 0f
+    var sensitivity = 0.95f
 
     val clapsAdapter = ClapsListAdapter()
     val clapsListLayoutManager = LinearLayoutManager(context, RecyclerView.VERTICAL, false)
@@ -59,19 +65,31 @@ class ClapsDataFragment : Fragment(), CoroutineScope {
         }
         serviceManager = WorkManager.getInstance(context!!)
 
+        sensitivity = sensitivitySeekBar.progress / 1000f
+        minFrequency = minFrequencySeekBar.progress.toFloat()
+        maxFrequency = maxFrequencySeekBar.progress.toFloat()
+
         sensitivitySeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, p2: Boolean) {
-                //clap
-                val sensitivity = progress.toDouble() / 1000.0
+                sensitivity = progress.toFloat() / 1000f
                 sensitivityTextView.setText(sensitivity.toString())
+            }
+
+            override fun onStartTrackingTouch(p0: SeekBar?) {}
+            override fun onStopTrackingTouch(p0: SeekBar?) {}
+        })
+        maxFrequencySeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, p2: Boolean) {
+                maxFrequency = progress.toFloat()
+                maxFrequencyTextView.setText(maxFrequency.toString())
             }
             override fun onStartTrackingTouch(p0: SeekBar?) {}
             override fun onStopTrackingTouch(p0: SeekBar?) {}
         })
-        thresholdSeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+        minFrequencySeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, p2: Boolean) {
-                val threshold = progress.toDouble() / 1000.0
-                thresholdTextView.setText(threshold.toString())
+                minFrequency = progress.toFloat()
+                minFrequencyTextView.setText(minFrequency.toString())
             }
             override fun onStartTrackingTouch(p0: SeekBar?) {}
             override fun onStopTrackingTouch(p0: SeekBar?) {}
@@ -86,13 +104,13 @@ class ClapsDataFragment : Fragment(), CoroutineScope {
                 }
             }
         })
-        clapsDataViewModel.lastServiceId.observe(viewLifecycleOwner, Observer{id ->
-                Preferences.saveServiceId(id)
-                clapsDataViewModel.listening.postValue(id != null)
+        clapsDataViewModel.lastServiceId.observe(viewLifecycleOwner, Observer { id ->
+            Preferences.saveServiceId(id)
+            clapsDataViewModel.listening.postValue(id != null)
         })
-        clapsDataViewModel.listening.observe(viewLifecycleOwner, Observer{ listening ->
-            context?:return@Observer
-            if (listening){
+        clapsDataViewModel.listening.observe(viewLifecycleOwner, Observer { listening ->
+            context ?: return@Observer
+            if (listening) {
                 listenImageView.setImageDrawable(
                     ContextCompat.getDrawable(context!!, R.drawable.ic_mic)
                 )
@@ -102,7 +120,6 @@ class ClapsDataFragment : Fragment(), CoroutineScope {
                 )
             }
         })
-
 
         startClapButton.setOnClickListener {
             //startService()
@@ -117,57 +134,70 @@ class ClapsDataFragment : Fragment(), CoroutineScope {
     }
 
 
-    fun startService(){
-        clapsDataViewModel.lastServiceId.value?.let {
-            serviceManager?.cancelWorkById(it)
-        }
-        val sensitivity = sensitivitySeekBar.progress.toDouble() / 1000.0
-        val threshold = thresholdSeekBar.progress.toDouble() / 1000.0
-        val dataBuilder = Data.Builder().apply {
-            putDouble(ClapsDetectionService.SENSIVITY_PARAM,   sensitivity)
-            putDouble(ClapsDetectionService.THRESHOLD_PARAM,    threshold)
-        }
-        val constraints = Constraints.Builder().build()
-        val service = OneTimeWorkRequest.Builder(ClapsDetectionService::class.java)
-            .setInputData(dataBuilder.build())
-            .setConstraints(constraints)
-            .build()
-        clapsDataViewModel.lastServiceId.postValue(service.id)
-        serviceManager?.enqueue(service)
-    }
 
-    fun stopService(){
-        clapsDataViewModel.lastServiceId.value?.let {
-            serviceManager?.cancelWorkById(it)
-        }
-        clapsDataViewModel.lastServiceId.postValue(null)
-    }
 
-    fun startThread(){
+    fun startThread() {
         clapsDataViewModel.listening.postValue(true)
-        val sensitivity = sensitivitySeekBar.progress.toDouble() / 1000.0
-        val threshold = thresholdSeekBar.progress.toDouble() / 1000.0
-        clapsDetector.sensitivity = sensitivity
-        clapsDetector.threshold = threshold
         clapsDetector.prepare()
         clapsDetector.onSpectrumCalculated = { spectrum ->
-            val frequencyStep = (clapsDetector.enabledSampleRate / 12 / (clapsDetector.fftWindowSize / 2))
+            val frequencyStep =
+                (clapsDetector.enabledSampleRate / clapsDetector.fftWindowSize)
             var frequency = 0
             var max = 0f
             for (i in spectrum.indices) {
-                if (spectrum[i] > max){
+                if (spectrum[i] > max) {
                     max = spectrum[i]
                     frequency = i
                 }
             }
-            currentFrequency.setText(getString(R.string.frequency, (frequency*frequencyStep).toString()))
+            currentFrequency.setText(
+                getString(
+                    R.string.frequency,
+                    (frequency * frequencyStep).toString()
+                )
+            )
             spectrumView?.spectrum = spectrum
+        }
+        clapsDetector.onAmplitudeCalculated = { amplitude ->
+            amplitudeView?.let { amplitudeSurfaceView ->
+                amplitudeSurfaceView.amplitudes.addAll(amplitude)
+                while (amplitudeSurfaceView.amplitudes.size > amplitudeSurfaceView.amplitudesCount) {
+                    amplitudeSurfaceView.amplitudes.removeFirst()
+                }
+                //Log.d("ClapsDetector","Amplitudes: ${amplitudeSurfaceView.amplitudes.joinToString(" ")}")
+                amplitudeSurfaceView.drawAmplitudes()
+            }
+        }
+
+        clapsDetector.onParametersCalculated = { spectrum, amplitudes ->
+            val frequencyStep = clapsDetector.enabledSampleRate / clapsDetector.fftWindowSize
+            val lowBorder = minFrequency.toInt() //Hz
+            val topBorder = maxFrequency.toInt() //Hz
+            val threshold = 1f - sensitivity
+            var frequency = 0
+            var max = 0f
+            for (i in lowBorder / frequencyStep until topBorder / frequencyStep) {
+                if (i >= spectrum.size) break
+                if (spectrum[i] > threshold && spectrum[i] > max) {
+                    max = spectrum[i]
+                    frequency = i
+                }
+            }
+            max = 0f
+            for (i in amplitudes) {
+                if (i > max) max = i
+            }
+            if (max > threshold && frequency != 0) {
+                launch (Dispatchers.Main){
+                    Toast.makeText(context, "Clap! Frequency = ${frequency * frequencyStep} Hz", Toast.LENGTH_SHORT).show()
+                }
+            }
         }
         clapsDetector.startListening()
 
     }
 
-    fun stopThread(){
+    fun stopThread() {
         clapsDataViewModel.listening.postValue(false)
         clapsDetector.stopListening()
     }

@@ -10,14 +10,17 @@ import be.tarsos.dsp.AudioEvent
 import be.tarsos.dsp.io.TarsosDSPAudioFormat
 import be.tarsos.dsp.onsets.OnsetHandler
 import be.tarsos.dsp.onsets.PercussionOnsetDetector
+import java.lang.Math.pow
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.*
+import kotlin.math.absoluteValue
 import kotlin.math.sqrt
 
 class ClapsDetector: OnsetHandler {
 
     companion object {
-        val rates = intArrayOf(8000, 11025, 22050, 44100, 48000)
+        val rates = intArrayOf(8000, 11025, 22050/*, 44100, 48000*/)
         val channels = intArrayOf(AudioFormat.CHANNEL_IN_MONO /*, AudioFormat.CHANNEL_IN_STEREO*/)
         val encodings = intArrayOf(AudioFormat.ENCODING_PCM_8BIT, AudioFormat.ENCODING_PCM_16BIT)
 
@@ -35,24 +38,24 @@ class ClapsDetector: OnsetHandler {
     var encodingByteCount = 1
     private var channelsCount = 1
     private var minBufferSize = 0
-    var fftWindowSize = 512
+    var fftWindowSize = 1024
     private set
-    private var recordingSampleRate = 8000
+    val samplesPerAmplitude = 20
     private var bytesPerSecond = 0
     private var listeningPeriodicPause = 20L
-    private var tarsosFormat: TarsosDSPAudioFormat? = null
     var sensitivity: Double = 0.0
     var threshold: Double = 0.0
 
     var onDetected: ((time: Double, intensity: Double) -> Unit)? = null
     var onSpectrumCalculated: ((spectrum: Array<Float>) -> Unit)? = null
+    var onAmplitudeCalculated: ((amplitudes: List<Float>) -> Unit)? = null
+    var onParametersCalculated: ((spectrum: Array<Float>, amplitudes: List<Float>) -> Unit)? = null
 
     var listening = false
         private set
     var listeningThread: Thread? = null
 
     private var recorder: AudioRecord? = null
-    private var percussionOnsetDetector: PercussionOnsetDetector? = null
 
     fun getBestAudioSettings(){
         for (enc in encodings) {
@@ -87,26 +90,10 @@ class ClapsDetector: OnsetHandler {
 
         recorder = AudioRecord(
             MediaRecorder.AudioSource.MIC,
-            recordingSampleRate,
+            enabledSampleRate,
             enabledChannels,
             enabledEncoding,
             minBufferSize*10
-        )
-
-        percussionOnsetDetector = PercussionOnsetDetector(
-            recordingSampleRate.toFloat(),
-            minBufferSize,
-            this,
-            sensitivity,
-            threshold
-        )
-
-        tarsosFormat = TarsosDSPAudioFormat(
-            recordingSampleRate.toFloat(),
-            if (enabledEncoding == AudioFormat.ENCODING_PCM_16BIT) 16 else 8,
-            channelsCount,
-            true,
-            false
         )
     }
 
@@ -147,7 +134,7 @@ class ClapsDetector: OnsetHandler {
 //                Log.d("RecorderSize", "$recordingResult $minBufferSize")
 
                 if (recordingResult != AudioRecord.ERROR){
-                    val audioEvent = AudioEvent(tarsosFormat)
+
                     val floatSamples = buffer.toFloatArray()
                     complexSamples.forEachIndexed { idx, value ->
                         value.real = floatSamples.getOrNull(idx)?.toDouble() ?: 0.0
@@ -157,9 +144,19 @@ class ClapsDetector: OnsetHandler {
                         magnitudes[i] = sqrt(spectrum[i].real * spectrum[i].real + spectrum[i].image * spectrum[i].image).toFloat()
                     }
                     normalize(magnitudes)
+
+                    val amplitudes = LinkedList<Float>()
+                    for (i in 0 until floatSamples.size / samplesPerAmplitude) {
+                        var amplitude = 0f
+                        for (j in 0 until samplesPerAmplitude) {
+                            amplitude += floatSamples[i * samplesPerAmplitude + j]
+                        }
+                        val normalizedAmplitude = (amplitude / samplesPerAmplitude) / pow(2.0, encodingByteCount * 8.0 - 1).toFloat()
+                        amplitudes.addLast(normalizedAmplitude)
+                    }
+                    onParametersCalculated?.invoke(magnitudes, amplitudes)
                     onSpectrumCalculated?.invoke(magnitudes)
-//                    audioEvent.floatBuffer = floatSamples
-//                    percussionOnsetDetector?.process(audioEvent)
+                    onAmplitudeCalculated?.invoke(amplitudes)
                 }
 //                SystemClock.sleep(listeningPeriodicPause)
             }
