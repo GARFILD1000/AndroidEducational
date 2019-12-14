@@ -39,11 +39,11 @@ class SpectrumSurfaceView: SurfaceView, SurfaceHolder.Callback2 {
         val maxSpectrumWidth = width.toFloat()
         val spectrumStep = maxSpectrumWidth / spectrumArraySize.toFloat()
         currentSpectrumPath = Path()
-        currentSpectrumPath?.moveTo(0f, 0f)
+        currentSpectrumPath?.moveTo(0f, maxAmplitudeHeight)
         for (i in 0 until spectrumArraySize) {
-            currentSpectrumPath?.lineTo(spectrumStep * i, value[i] * maxAmplitudeHeight)
+            currentSpectrumPath?.lineTo(spectrumStep * i, maxAmplitudeHeight - (value[i] * maxAmplitudeHeight))
         }
-        currentSpectrumPath?.lineTo(maxSpectrumWidth, 0f)
+        currentSpectrumPath?.lineTo(maxSpectrumWidth, maxAmplitudeHeight)
         drawSpectrum()
     }
 

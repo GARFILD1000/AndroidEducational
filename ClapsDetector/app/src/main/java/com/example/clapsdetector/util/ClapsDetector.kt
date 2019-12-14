@@ -18,17 +18,25 @@ class ClapsDetector: OnsetHandler {
 
     companion object {
         val rates = intArrayOf(8000, 11025, 22050, 44100, 48000)
-        val channels = intArrayOf(AudioFormat.CHANNEL_IN_MONO, AudioFormat.CHANNEL_IN_STEREO)
+        val channels = intArrayOf(AudioFormat.CHANNEL_IN_MONO /*, AudioFormat.CHANNEL_IN_STEREO*/)
         val encodings = intArrayOf(AudioFormat.ENCODING_PCM_8BIT, AudioFormat.ENCODING_PCM_16BIT)
 
         const val LOG_TAG = "ClapsDetector"
     }
 
     private var enabledChannels = AudioFormat.CHANNEL_IN_MONO
-    private var enabledSampleRate = 8000
+    var enabledSampleRate = 8000
+    private set
     private var enabledEncoding = AudioFormat.ENCODING_PCM_16BIT
+    set(value){
+        field = value
+        encodingByteCount = if (value == AudioFormat.ENCODING_PCM_16BIT) 2 else 1
+    }
+    var encodingByteCount = 1
     private var channelsCount = 1
     private var minBufferSize = 0
+    var fftWindowSize = 512
+    private set
     private var recordingSampleRate = 8000
     private var bytesPerSecond = 0
     private var listeningPeriodicPause = 20L
@@ -56,7 +64,6 @@ class ClapsDetector: OnsetHandler {
                         enabledChannels = ch
                         enabledSampleRate = rate
                         minBufferSize = t
-                        break
                     }
                 }
             }
@@ -112,9 +119,9 @@ class ClapsDetector: OnsetHandler {
 //        listeningThread?.interrupt()
         listeningThread = Thread{
             Log.d(LOG_TAG,"in thread")
-            val buffer = ByteArray(minBufferSize*2)
+            val buffer = ByteArray(fftWindowSize * encodingByteCount)
             recorder?.startRecording()
-            val complexSamples = Array<TComplex>(buffer.size / 4) { TComplex(0.0,0.0)}
+            val complexSamples = Array<TComplex>(fftWindowSize) { TComplex(0.0,0.0)}
             val magnitudes = Array<Float>(complexSamples.size / 2) {0f}
             while(listening){
 //                Log.d(LOG_TAG,"thread")
@@ -137,7 +144,7 @@ class ClapsDetector: OnsetHandler {
                         Log.d(LOG_TAG,"SUCCESS")
                     }
                 }
-                Log.d("RecorderSize", "$recordingResult $minBufferSize")
+//                Log.d("RecorderSize", "$recordingResult $minBufferSize")
 
                 if (recordingResult != AudioRecord.ERROR){
                     val audioEvent = AudioEvent(tarsosFormat)
@@ -145,16 +152,16 @@ class ClapsDetector: OnsetHandler {
                     complexSamples.forEachIndexed { idx, value ->
                         value.real = floatSamples.getOrNull(idx)?.toDouble() ?: 0.0
                     }
-                    val spectrum = FFT.decimationInFrequency(complexSamples)
+                    val spectrum = FFT.decimationInTime(complexSamples)
                     for (i in 0 until magnitudes.size) {
                         magnitudes[i] = sqrt(spectrum[i].real * spectrum[i].real + spectrum[i].image * spectrum[i].image).toFloat()
                     }
                     normalize(magnitudes)
                     onSpectrumCalculated?.invoke(magnitudes)
-                    audioEvent.floatBuffer = floatSamples
-                    percussionOnsetDetector?.process(audioEvent)
+//                    audioEvent.floatBuffer = floatSamples
+//                    percussionOnsetDetector?.process(audioEvent)
                 }
-                SystemClock.sleep(listeningPeriodicPause)
+//                SystemClock.sleep(listeningPeriodicPause)
             }
             recorder?.stop()
         }

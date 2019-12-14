@@ -151,6 +151,7 @@ class ClapsDataFragment : Fragment(), CoroutineScope {
         clapsDetector.threshold = threshold
         clapsDetector.prepare()
         clapsDetector.onSpectrumCalculated = { spectrum ->
+            val frequencyStep = (clapsDetector.enabledSampleRate / 12 / (clapsDetector.fftWindowSize / 2))
             var frequency = 0
             var max = 0f
             for (i in spectrum.indices) {
@@ -159,7 +160,7 @@ class ClapsDataFragment : Fragment(), CoroutineScope {
                     frequency = i
                 }
             }
-            currentFrequency.setText(getString(R.string.frequency, frequency.toString()))
+            currentFrequency.setText(getString(R.string.frequency, (frequency*frequencyStep).toString()))
             spectrumView?.spectrum = spectrum
         }
         clapsDetector.startListening()
