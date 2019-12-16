@@ -30,6 +30,7 @@ import kotlinx.coroutines.launch
 import java.util.*
 import kotlin.coroutines.CoroutineContext
 import kotlin.math.roundToInt
+import kotlin.math.roundToLong
 import kotlin.math.sin
 
 class ClapsDataFragment : Fragment(), CoroutineScope {
@@ -71,7 +72,7 @@ class ClapsDataFragment : Fragment(), CoroutineScope {
 
         sensitivitySeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, p2: Boolean) {
-                sensitivity = progress.toFloat() / 1000f
+                sensitivity = progress.toFloat() / 10000f
                 sensitivityTextView.setText(sensitivity.toString())
             }
 
@@ -81,7 +82,7 @@ class ClapsDataFragment : Fragment(), CoroutineScope {
         maxFrequencySeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, p2: Boolean) {
                 maxFrequency = progress.toFloat()
-                maxFrequencyTextView.setText(maxFrequency.toString())
+                maxFrequencyTextView.setText(maxFrequency.roundToInt().toString())
             }
             override fun onStartTrackingTouch(p0: SeekBar?) {}
             override fun onStopTrackingTouch(p0: SeekBar?) {}
@@ -89,7 +90,7 @@ class ClapsDataFragment : Fragment(), CoroutineScope {
         minFrequencySeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, p2: Boolean) {
                 minFrequency = progress.toFloat()
-                minFrequencyTextView.setText(minFrequency.toString())
+                minFrequencyTextView.setText(minFrequency.roundToInt().toString())
             }
             override fun onStartTrackingTouch(p0: SeekBar?) {}
             override fun onStopTrackingTouch(p0: SeekBar?) {}
@@ -173,7 +174,7 @@ class ClapsDataFragment : Fragment(), CoroutineScope {
             val frequencyStep = clapsDetector.enabledSampleRate / clapsDetector.fftWindowSize
             val lowBorder = minFrequency.toInt() //Hz
             val topBorder = maxFrequency.toInt() //Hz
-            val threshold = 1f - sensitivity
+            val threshold = 0.2f - sensitivity
             var frequency = 0
             var max = 0f
             for (i in lowBorder / frequencyStep until topBorder / frequencyStep) {

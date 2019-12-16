@@ -39,7 +39,6 @@ class ClapsDetectionService(val context: Context, val params: WorkerParameters):
     private var enabledEncoding = AudioFormat.ENCODING_PCM_16BIT
     private var channelsCount = 1
     private var minBufferSize = 0
-    private var recordingSampleRate = 8000
     private var bytesPerSecond = 0
     private var listeningPeriodicPause = 20L
     private var tarsosFormat: TarsosDSPAudioFormat? = null
@@ -98,17 +97,16 @@ class ClapsDetectionService(val context: Context, val params: WorkerParameters):
 
     fun prepare(){
         getBestAudioSettings()
-
         recorder = AudioRecord(
             MediaRecorder.AudioSource.MIC,
-            recordingSampleRate,
+            enabledSampleRate,
             enabledChannels,
             enabledEncoding,
             minBufferSize*10
         )
 
         percussionOnsetDetector = PercussionOnsetDetector(
-            recordingSampleRate.toFloat(),
+            enabledSampleRate.toFloat(),
             minBufferSize,
             this,
             sensitivity,
@@ -116,7 +114,7 @@ class ClapsDetectionService(val context: Context, val params: WorkerParameters):
         )
 
         tarsosFormat = TarsosDSPAudioFormat(
-            recordingSampleRate.toFloat(),
+            enabledSampleRate.toFloat(),
             if (enabledEncoding == AudioFormat.ENCODING_PCM_16BIT) 16 else 8,
             channelsCount,
             true,

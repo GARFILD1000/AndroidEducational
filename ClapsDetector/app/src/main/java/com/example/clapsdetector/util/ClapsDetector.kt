@@ -20,7 +20,7 @@ import kotlin.math.sqrt
 class ClapsDetector: OnsetHandler {
 
     companion object {
-        val rates = intArrayOf(8000, 11025, 22050/*, 44100, 48000*/)
+        val rates = intArrayOf(8000, 11025, 22050, 44100, 48000)
         val channels = intArrayOf(AudioFormat.CHANNEL_IN_MONO /*, AudioFormat.CHANNEL_IN_STEREO*/)
         val encodings = intArrayOf(AudioFormat.ENCODING_PCM_8BIT, AudioFormat.ENCODING_PCM_16BIT)
 

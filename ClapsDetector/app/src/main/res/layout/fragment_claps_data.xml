@@ -48,7 +48,7 @@
             android:id="@+id/maxFrequencyTextView"
             android:layout_height="wrap_content"
             android:layout_width="50dp"
-            android:text="20000.0"/>
+            android:text="20000"/>
         <SeekBar
             android:id="@+id/maxFrequencySeekBar"
             android:layout_width="0dp"
@@ -74,7 +74,7 @@
             android:id="@+id/minFrequencyTextView"
             android:layout_height="wrap_content"
             android:layout_width="50dp"
-            android:text="0.0"/>
+            android:text="0"/>
 
         <SeekBar
             android:id="@+id/minFrequencySeekBar"
@@ -101,15 +101,15 @@
             android:id="@+id/sensitivityTextView"
             android:layout_height="wrap_content"
             android:layout_width="50dp"
-            android:text="0.95"/>
+            android:text="0.5"/>
 
         <SeekBar
             android:id="@+id/sensitivitySeekBar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_margin="10dp"
-            android:progress="950"
-            android:max="1000"/>
+            android:progress="500"
+            android:max="2000"/>
 
     </LinearLayout>
 
